@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>html{-webkit-text-size-adjust:100%}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>DISC Map Builder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&display=swap">
+<style>
+/* Layout: a working column (team PDF, deck details, roster) beside a pinned proof of the slide, so every edit shows on the map at once. */
+:root {
+  --bg: #f2f3f7;
+  --surface: #ffffff;
+  --ink: #171c2b;
+  --muted: #586174;
+  --faint: #99a1b0;
+  --rule: #dcdfe7;
+  --rule-strong: #b7bdca;
+  --accent: #1f2fb8;
+  --accent-ink: #ffffff;
+  --accent-wash: #eceefb;
+  --ok-bg: #e2f2e7; --ok-ink: #1d5c33;
+  --warn-bg: #fff4c2; --warn-ink: #6b5200;
+  --bad-bg: #fbe3e1; --bad-ink: #a3211a;
+  --font-display: "Archivo Narrow", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Public Sans", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11131a; --surface: #191c25; --ink: #e6e8ef; --muted: #a2a9b8; --faint: #6d7486;
+    --rule: #2a2e3b; --rule-strong: #444b5c; --accent: #9ea8ff; --accent-ink: #11143a; --accent-wash: #1f2244;
+    --ok-bg: #16331f; --ok-ink: #9ad9ae; --warn-bg: #3a3210; --warn-ink: #f1d77e; --bad-bg: #40191a; --bad-ink: #ffa8a1; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11131a; --surface: #191c25; --ink: #e6e8ef; --muted: #a2a9b8; --faint: #6d7486;
+  --rule: #2a2e3b; --rule-strong: #444b5c; --accent: #9ea8ff; --accent-ink: #11143a; --accent-wash: #1f2244;
+  --ok-bg: #16331f; --ok-ink: #9ad9ae; --warn-bg: #3a3210; --warn-ink: #f1d77e; --bad-bg: #40191a; --bad-ink: #ffa8a1; color-scheme: dark;
+}
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 24px; }
+h1, h2 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+h1 { font-size: 2.3rem; font-weight: 700; line-height: 1.05; }
+h2 { font-size: 1.2rem; font-weight: 600; }
+.lede { margin: 6px 0 0; color: var(--muted); max-width: 64ch; }
+.eyebrow { font-family: var(--font-display); font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); }
+.fine { color: var(--muted); font-size: 0.84rem; margin: 0; }
+
+.banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 14px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); color: var(--muted); font-size: 0.9rem; }
+.banner strong { color: var(--ink); font-weight: 600; }
+
+.desk { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+.work { display: grid; gap: 16px; min-width: 0; }
+.panel { display: grid; gap: 12px; padding: 18px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); min-width: 0; }
+.tray { position: relative; border: 1.5px dashed var(--rule-strong); cursor: pointer; transition: border-color .15s, background .15s; }
+.tray.over { border-color: var(--accent); background: var(--accent-wash); }
+.tray input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.tray p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.tray-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.busy { color: var(--accent); font-size: 0.85rem; }
+
+.fields { display: grid; gap: 12px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label { font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+input[type=text] { font: 500 0.92rem var(--font-body); color: var(--ink); background: var(--surface); border: 1px solid var(--rule-strong); border-radius: 6px; padding: 7px 9px; width: 100%; min-width: 0; }
+
+.btn { font: 600 0.9rem/1 var(--font-body); padding: 10px 14px; border-radius: 7px; border: 1px solid var(--rule-strong); background: var(--surface); color: var(--ink); cursor: pointer; }
+.btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.08); color: var(--accent-ink); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.linkbtn { font: inherit; font-size: 0.85rem; background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.x { font: 500 1rem/1 var(--font-body); border: 0; background: none; color: var(--faint); cursor: pointer; padding: 2px 4px; }
+.x:hover { color: var(--bad-ink); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.sec-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); }
+table.team { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+.team th, .team td { padding: 7px 10px; text-align: left; vertical-align: middle; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+.team tbody tr:last-child td { border-bottom: 0; }
+.team thead th { font-size: 0.72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.team td.num { font-family: var(--font-data); font-size: 0.84rem; font-variant-numeric: tabular-nums; text-align: right; }
+.team th.num { text-align: right; }
+.team .muted { color: var(--faint); font-size: 0.82rem; }
+.team .reports { display: flex; gap: 12px; align-items: center; }
+.team-actions { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.team td input[type=text] { width: 8em; padding: 5px 7px; font-weight: 600; }
+.team tr.off td:not(:first-child) { opacity: 0.45; }
+.chip { display: inline-block; font: 600 0.74rem/1 var(--font-body); padding: 4px 7px; border-radius: 4px; }
+.chip.ok { background: var(--ok-bg); color: var(--ok-ink); }
+.chip.warn { background: var(--warn-bg); color: var(--warn-ink); }
+.chip.bad { background: var(--bad-bg); color: var(--bad-ink); }
+.emptystate { padding: 26px 18px; color: var(--muted); text-align: center; }
+
+.proof { display: grid; gap: 12px; min-width: 0; width: 100%; max-width: 640px; }
+.slide { position: relative; width: 100%; aspect-ratio: 8.5 / 11; background: #fff; border: 1px solid var(--rule-strong); border-radius: 4px; overflow: hidden; container-type: inline-size; box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 6px 20px rgba(20,25,60,.08); color: #000; }
+.slide .pic { position: absolute; overflow: hidden; }
+.slide .pic img { position: absolute; display: block; max-width: none; }
+.slide .t { position: absolute; display: flex; flex-direction: column; align-items: center; white-space: pre; line-height: 1.2; font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif; }
+.slide .t.mid { justify-content: center; }
+.slide .t span { font-size: calc(var(--pt) / 72 / 8.5 * 100cqw); text-align: center; }
+.slide .t.arial { font-family: Arial, Helvetica, sans-serif; }
+.slide .n { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif; font-weight: 700; color: #0000cc; line-height: 1; font-size: calc(var(--pt) / 72 / 8.5 * 100cqw); }
+.slide .n.over { color: #d00000; }
+.slide .lines { position: absolute; inset: 0; width: 100%; height: 100%; }
+.proof-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.motivators { display: grid; gap: 12px; min-width: 0; }
+/* The Motivators preview is a printed page, so it keeps paper colors in both themes. */
+.mot-wrap { overflow-x: auto; background: #fff; color: #000; border: 1px solid var(--rule-strong); border-radius: 4px; padding: 18px 16px; }
+.mot-wrap table { border-collapse: separate; border-spacing: 0; font-family: Arial, Helvetica, sans-serif; margin: 0 auto; color: #000; }
+.mot-wrap caption { font-weight: 700; font-size: 1.15rem; color: #0000cc; padding-bottom: 6px; }
+.mot-wrap th, .mot-wrap td { padding: 0; height: 30px; text-align: center; white-space: nowrap; font-size: 0.86rem; }
+.mot-wrap thead th { font-weight: 700; border-top: 1px solid #000; border-bottom: 1px solid #000; height: 30px; }
+.mot-wrap th.who { text-align: left; color: #0000cc; font-weight: 700; font-size: 1rem; padding-right: 22px; border: 0; }
+.mot-wrap td.rank { min-width: 104px; padding: 0 3px; }
+.mot-wrap td.rank span { display: block; padding: 3px 8px; border: 3px solid transparent; }
+.mot-wrap .first { border-left: 1px solid #000; }
+.mot-wrap .lastc { border-right: 1px solid #000; }
+.mot-wrap .div { width: 6px; min-width: 6px; background: #262626; }
+.mot-wrap tbody tr:last-child td { border-bottom: 1px solid #000; }
+.mot-wrap .move { border: 0 !important; padding-right: 10px; white-space: nowrap; }
+.mot-wrap .move button { font: 700 0.7rem/1 Arial, sans-serif; width: 24px; height: 22px; border: 1px solid #b7bdca; border-radius: 4px; background: #fff; color: #1f2fb8; cursor: pointer; }
+.mot-wrap .move button:hover:not(:disabled) { background: #eceefb; border-color: #1f2fb8; }
+.mot-wrap .move button:disabled { opacity: 0.3; cursor: default; }
+.mot-wrap .move button:focus-visible { outline: 2px solid #1f2fb8; outline-offset: 1px; }
+.mot-wrap .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.mot-wrap .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: center; margin-top: 14px; font-size: 0.8rem; }
+.mot-wrap .legend span { padding: 2px 10px; border: 3px solid transparent; }
+
+#toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); max-width: calc(100% - 32px); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 0.9rem; box-shadow: 0 6px 24px rgba(0,0,0,.18); z-index: 20; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main class="wrap"><header>
+    <div class="eyebrow">Team DISC summary</div>
+    <h1>DISC Map Builder</h1>
+    <p class="lede">Drop in the team PDF. Each person's Natural style lands in their box on the DISC Map, which downloads as PowerPoint or PDF. When the PDF has Motivators pages, the team's Motivators Map downloads as PDF or Excel.</p>
+  </header>
+
+  <div class="banner" id="exampleBanner" hidden>
+    <strong>Showing an example team.</strong>
+    <span>These people are made up. Drop your team PDF to replace them.</span>
+    <button class="linkbtn" id="clearExample" type="button">Clear example</button>
+  </div>
+
+  <div class="desk">
+    <div class="work">
+      <label class="panel tray" id="tray" for="fileInput">
+        <span class="eyebrow">Team PDF</span>
+        <p>Each person's DISC Map page, plus their Motivators page if the PDF has one. Add another PDF any time; a person who appears twice keeps the newer page.</p>
+        <input type="file" id="fileInput" accept="application/pdf,.pdf" multiple>
+        <div class="tray-row">
+          <span class="btn" aria-hidden="true">Choose PDF</span>
+          <span class="busy" id="busy" hidden>Reading&hellip;</span>
+        </div>
+      </label>
+
+      <div class="panel">
+        <span class="eyebrow">Deck details</span>
+        <div class="fields">
+          <div class="field"><label for="company">Company name (slide title)</label><input type="text" id="company" placeholder="The client's company name"></div>
+          <div class="field"><label for="footer">Footer</label><input type="text" id="footer"></div>
+        </div>
+      </div>
+
+      <section style="display:grid;gap:10px" aria-labelledby="teamTitle">
+        <div class="sec-head">
+          <h2 id="teamTitle">Team</h2>
+          <div class="team-actions">
+            <button class="linkbtn" id="clearTeam" type="button" hidden>Clear team</button>
+            <button class="btn" id="saveAll" type="button" hidden>Save all reports</button>
+          </div>
+        </div>
+        <p class="fine" id="summary"></p>
+        <div class="table-wrap" id="team"></div>
+        <p class="fine">An asterisk means the report has no Natural number, so the Adapted number is plotted instead. Edit a name to shorten it or tell two people apart, and untick anyone who shouldn't be on the map. Save report gives you that person's page as its own PDF; reports are built in your browser and saved where your browser saves downloads.</p>
+      </section>
+    </div>
+
+    <aside class="proof" aria-labelledby="proofTitle">
+      <h2 id="proofTitle">Slide preview</h2>
+      <div class="slide" id="slide"></div>
+      <div class="proof-actions">
+        <p class="fine" id="proofNote"></p>
+        <div class="btn-row">
+          <button class="btn" id="downloadPdf" type="button" disabled>Download PDF</button>
+          <button class="btn primary" id="download" type="button" disabled>Download PowerPoint</button>
+        </div>
+      </div>
+    </aside>
+
+    <section class="motivators" aria-labelledby="motTitle">
+      <div class="sec-head">
+        <h2 id="motTitle">Motivators Map</h2>
+        <div class="btn-row">
+          <button class="btn" id="motPdf" type="button" disabled>Download PDF</button>
+          <button class="btn primary" id="motXlsx" type="button" disabled>Download Excel</button>
+        </div>
+      </div>
+      <p class="fine"><span id="motNote"></span> <button class="linkbtn" id="motReset" type="button" hidden>Back to alphabetical order</button></p>
+      <div class="mot-wrap" id="motPreview"></div>
+    </section>
+  </div>
+</main>
+<div id="toast" role="status" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="disc-map-engine.js"></script>
+<script src="disc-map-exports.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const SLIDE_W = 7772400, SLIDE_H = 10058400;
+const pctX = v => (v / SLIDE_W * 100).toFixed(3) + '%', pctY = v => (v / SLIDE_H * 100).toFixed(3) + '%';
+const DEFAULT_FOOTER = 'For more information on our assessments, please call Paragon Resources at 770.319.0310 or visit www.ParagonResources.com';
+const EXAMPLE_COMPANY = 'Example Company';
+
+const state = { people: [], nextId: 1, templateBytes: null, layoutHtml: '' };
+
+/* ---------- Template: the slide's fixed artwork and text, drawn from the template file itself ---------- */
+
+const NS_A = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+const NS_P = 'http://schemas.openxmlformats.org/presentationml/2006/main';
+const NS_R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const first = (el, ns, tag) => el.getElementsByTagNameNS(ns, tag)[0];
+
+async function loadTemplate() {
+  const b64 = (await (await fetch('disc-map-template.b64.txt')).text()).trim();
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const zip = await JSZip.loadAsync(bytes);
+  const xml = await zip.file('ppt/slideLayouts/slideLayout1.xml').async('string');
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  const imgUrl = URL.createObjectURL(await zip.file('ppt/media/image1.png').async('blob'));
+  let html = '';
+
+  for (const pic of doc.getElementsByTagNameNS(NS_P, 'pic')) {
+    const xf = first(pic, NS_A, 'xfrm'), off = first(xf, NS_A, 'off'), ext = first(xf, NS_A, 'ext'), crop = first(pic, NS_A, 'srcRect');
+    const c = k => +(crop?.getAttribute(k) || 0) / 100000;
+    const w = 100 / (1 - c('l') - c('r')), h = 100 / (1 - c('t') - c('b'));
+    html += `<div class="pic" style="left:${pctX(+off.getAttribute('x'))};top:${pctY(+off.getAttribute('y'))};width:${pctX(+ext.getAttribute('cx'))};height:${pctY(+ext.getAttribute('cy'))}"><img alt="" src="${imgUrl}" style="width:${w}%;height:${h}%;left:${-c('l') * w}%;top:${-c('t') * h}%"></div>`;
+  }
+
+  for (const sp of doc.getElementsByTagNameNS(NS_P, 'sp')) {
+    const xf = first(sp, NS_A, 'xfrm');
+    if (!xf) continue;
+    const off = first(xf, NS_A, 'off'), ext = first(xf, NS_A, 'ext');
+    const rot = +(xf.getAttribute('rot') || 0) / 60000;
+    const paras = [...sp.getElementsByTagNameNS(NS_A, 'p')].map(p => {
+      const runs = [...p.getElementsByTagNameNS(NS_A, 'r')];
+      const props = runs[0] ? first(runs[0], NS_A, 'rPr') : first(p, NS_A, 'endParaRPr');
+      return {
+        text: [...p.children].map(c => c.localName === 'br' ? '\n' : c.localName === 'r' ? first(c, NS_A, 't')?.textContent || '' : '').join('').trimEnd(),
+        pt: +(props?.getAttribute('sz') || 1000) / 100,
+        bold: props?.getAttribute('b') === '1',
+        color: first(props || p, NS_A, 'srgbClr')?.getAttribute('val') || '000000',
+        font: first(props || p, NS_A, 'latin')?.getAttribute('typeface') || '',
+      };
+    }).filter(p => p.text.trim());
+    if (!paras.length) continue;
+    const isFooter = paras[0].text.startsWith('For more information');
+    const body = isFooter ? `<span id="footerText" style="--pt:${paras[0].pt};color:#${paras[0].color};font-weight:700"></span>`
+      : paras.map(p => `<span style="--pt:${p.pt};color:#${p.color};font-weight:${p.bold ? 700 : 400}">${esc(p.text)}</span>`).join('');
+    html += `<div class="t${paras[0].font === 'Arial' ? ' arial' : ''}${rot ? ' mid' : ''}" style="left:${pctX(+off.getAttribute('x'))};top:${pctY(+off.getAttribute('y') + (rot ? 0 : 45714))};width:${pctX(+ext.getAttribute('cx'))};${rot ? `height:${pctY(+ext.getAttribute('cy'))};transform:rotate(${rot}deg);` : ''}">${body}</div>`;
+  }
+
+  state.templateBytes = bytes;
+  state.layoutHtml = html;
+}
+
+/* ---------- Rendering ---------- */
+
+function refreshNames() {
+  const firsts = {};
+  state.people.forEach(p => { firsts[p.first] = (firsts[p.first] || 0) + 1; });
+  for (const p of state.people) {
+    if (p.edited) continue;
+    const last = p.fullName.split(/\s+/).slice(1).pop() || '';
+    p.display = firsts[p.first] > 1 && last ? `${p.first} ${last[0]}.` : p.first;
+  }
+}
+
+const team = () => state.people.filter(p => p.include).map(p => ({ name: p.display, natural: p.natural, adapted: p.adapted }));
+const company = () => $('company').value.trim() || 'Company Name';
+
+function renderSlide() {
+  const plan = planWheel(team());
+  let names = '', lines = '';
+  for (const f of plan.fits) {
+    if (f.callout) {
+      const { dot, end } = f.callout;
+      lines += `<line x1="${dot.x}" y1="${dot.y}" x2="${end.x}" y2="${end.y}" stroke="#0000cc" stroke-width="25400"/><circle cx="${dot.x}" cy="${dot.y}" r="45720" fill="#0000cc"/>`;
+    }
+    for (const p of placedNames(f)) {
+      names += `<div class="n${f.fits || f.callout ? '' : ' over'}" style="left:${pctX(p.x)};top:${pctY(p.y)};--pt:${p.size}">${esc(p.name)}</div>`;
+    }
+  }
+  const overlay = lines ? `<svg class="lines" viewBox="0 0 ${SLIDE_W} ${SLIDE_H}" aria-hidden="true">${lines}</svg>` : '';
+  const title = `<div class="t" style="left:0;top:${pctY(228600 + 45720 + 200000)};width:100%"><span style="--pt:${titleSize(company())};color:#0000cc;font-weight:700">${esc(company())}</span><span style="--pt:28;color:#0000cc;font-weight:700">DISC Map</span></div>`;
+  $('slide').innerHTML = state.layoutHtml + title + overlay + names;
+  const ft = $('footerText');
+  if (ft) ft.textContent = $('footer').value;
+  const over = plan.fits.filter(f => !f.fits && !f.callout).length;
+  $('proofNote').textContent = over ? 'Names in red touch a line even at 9 pt. They download in blue.' : '';
+  $('download').disabled = $('downloadPdf').disabled = !state.templateBytes || !plan.fits.length;
+  renderMotivators();
+  return plan;
+}
+
+const reportLink = (p, part, label) => p[part]
+  ? `<button class="linkbtn" type="button" data-save="${part}" data-id="${p.id}" aria-label="Save ${esc(label)} report for ${esc(p.fullName)}">${label}</button>`
+  : `<span class="muted">No ${label}</span>`;
+
+function renderTeam() {
+  refreshNames();
+  $('exampleBanner').hidden = !state.people.some(p => p.example);
+  $('clearTeam').hidden = !state.people.length;
+  const reportCount = state.people.reduce((n, p) => n + (p.disc ? 1 : 0) + (p.mot ? 1 : 0), 0);
+  $('saveAll').hidden = !reportCount;
+  $('saveAll').textContent = `Save all ${reportCount} reports (.zip)`;
+  const plan = renderSlide();
+  const fitFor = box => plan.fits.find(f => f.n === box);
+  const counts = { centered: 0, moved: 0, outside: 0, over: 0, missing: 0 };
+  const rows = state.people.map(p => {
+    const box = p.natural ?? p.adapted, f = p.include && box != null ? fitFor(box) : null;
+    let chip = '<span class="chip">Off the map</span>';
+    if (p.include) {
+      if (box == null || !boxOf(box)) { chip = `<span class="chip bad">${p.disc || p.example ? 'No number found' : 'No DISC page'}</span>`; counts.missing++; }
+      else if (f.callout) { chip = '<span class="chip ok">Outside, with line</span>'; counts.outside++; }
+      else if (!f.fits) { chip = '<span class="chip bad">Touches a line</span>'; counts.over++; }
+      else if (!f.centered) { chip = '<span class="chip warn">Moved off center</span>'; counts.moved++; }
+      else { chip = '<span class="chip ok">Centered</span>'; counts.centered++; }
+    }
+    return `<tr class="${p.include ? '' : 'off'}">
+      <td><input type="checkbox" data-include="${p.id}" ${p.include ? 'checked' : ''} aria-label="Put ${esc(p.fullName)} on the map"></td>
+      <td><input type="text" data-name="${p.id}" value="${esc(p.display)}" aria-label="Name on the map for ${esc(p.fullName)}"></td>
+      <td>${esc(p.fullName)}</td>
+      <td><span class="reports">${p.example ? '<span class="muted">Example</span>' : reportLink(p, 'disc', 'DISC') + reportLink(p, 'mot', 'Motivators')}</span></td>
+      <td class="num">${p.natural ?? '&mdash;'}</td>
+      <td class="num">${p.adapted ?? '&mdash;'}</td>
+      <td class="num">${box != null ? (p.natural == null ? '*' : '') + box : '&mdash;'}</td>
+      <td class="num">${f ? (f.callout ? f.callout.size : f.size) + ' pt' : '&mdash;'}</td>
+      <td>${chip}</td>
+      <td><button class="x" type="button" data-remove="${p.id}" aria-label="Remove ${esc(p.fullName)}">&times;</button></td>
+    </tr>`;
+  }).join('');
+  $('team').innerHTML = state.people.length
+    ? `<table class="team"><thead><tr><th>On map</th><th>Name on map</th><th>Full name</th><th>Save report</th><th class="num">Natural</th><th class="num">Adapted</th><th class="num">Box</th><th class="num">Size</th><th>Fit</th><th></th></tr></thead><tbody>${rows}</tbody></table>`
+    : '<div class="emptystate">Drop a team PDF above to fill the map.</div>';
+  const parts = [];
+  if (counts.centered) parts.push(`${counts.centered} centered`);
+  if (counts.moved) parts.push(`${counts.moved} moved off center`);
+  if (counts.outside) parts.push(`${counts.outside} outside the wheel with a line`);
+  if (counts.over) parts.push(`${counts.over} touching a line`);
+  if (counts.missing) parts.push(`${counts.missing} with no number`);
+  const n = state.people.filter(p => p.include).length;
+  $('summary').textContent = state.people.length ? `${n} ${n === 1 ? 'person' : 'people'} on the map: ${parts.join(', ')}.` : '';
+}
+
+/* ---------- Adding PDFs ---------- */
+
+async function addPdfs(files) {
+  const pdfs = files.filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf');
+  if (pdfs.length < files.length) toast('Only PDF files can be read; the others were skipped.');
+  if (!pdfs.length) return;
+  $('busy').hidden = false;
+  const added = [], problems = [];
+  for (const f of pdfs) {
+    try {
+      const { people } = await readTeamPdf(new Uint8Array(await f.arrayBuffer()));
+      if (!people.length) problems.push(`${f.name} has no DISC Map or Motivators pages`);
+      else {
+        added.push(...people);
+        const v = $('company').value.trim();
+        if (!v || v === EXAMPLE_COMPANY) $('company').value = f.name.replace(/\.pdf$/i, '');
+      }
+    } catch (e) { console.error(e); problems.push(`${f.name} couldn't be read`); }
+  }
+  $('busy').hidden = true;
+  if (added.length) {
+    state.people = state.people.filter(p => !p.example);
+    for (const p of added) {
+      const known = state.people.find(o => o.fullName === p.fullName);
+      if (!known) { state.people.push({ ...p, id: state.nextId++, include: true }); continue; }
+      // A later PDF only replaces the pages it actually has, so a Motivators-only PDF keeps the DISC page.
+      if (p.disc) Object.assign(known, { natural: p.natural, adapted: p.adapted, disc: p.disc });
+      if (p.mot) known.mot = p.mot;
+    }
+    state.people.sort((a, b) => a.fullName.localeCompare(b.fullName));
+    renderTeam();
+  }
+  toast(problems.length ? problems.join('. ') + '.' : `Read ${added.length} ${added.length === 1 ? 'person' : 'people'}.`);
+}
+
+const tray = $('tray'), input = $('fileInput');
+input.addEventListener('change', () => { addPdfs([...input.files]); input.value = ''; });
+tray.addEventListener('dragover', e => { e.preventDefault(); tray.classList.add('over'); });
+tray.addEventListener('dragleave', e => { if (!tray.contains(e.relatedTarget)) tray.classList.remove('over'); });
+tray.addEventListener('drop', e => { e.preventDefault(); tray.classList.remove('over'); addPdfs([...e.dataTransfer.files]); });
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => e.preventDefault());
+
+$('team').addEventListener('input', e => {
+  const id = e.target.dataset.name;
+  if (!id) return;
+  const p = state.people.find(p => String(p.id) === id);
+  p.display = e.target.value; p.edited = true;
+  renderSlide();
+});
+$('team').addEventListener('change', e => {
+  if (e.target.dataset.name) { renderTeam(); return; }
+  const id = e.target.dataset.include;
+  if (!id) return;
+  state.people.find(p => String(p.id) === id).include = e.target.checked;
+  renderTeam();
+});
+$('team').addEventListener('click', async e => {
+  const save = e.target.closest('[data-save]');
+  if (save) {
+    const p = state.people.find(o => String(o.id) === save.dataset.id), part = save.dataset.save;
+    try { await offer(reportFileName(p, part), await reportPdf(p[part], new Map())); }
+    catch (err) { console.error(err); toast(`Couldn't build that report. ${err.message || ''}`); }
+    return;
+  }
+  const id = e.target.closest('[data-remove]')?.dataset.remove;
+  if (!id) return;
+  state.people = state.people.filter(p => String(p.id) !== id);
+  renderTeam();
+});
+function clearPeople() {
+  state.people = [];
+  state.motOrder = [];
+  if ($('company').value === EXAMPLE_COMPANY) $('company').value = '';
+  renderTeam();
+}
+$('clearExample').addEventListener('click', clearPeople);
+$('clearTeam').addEventListener('click', clearPeople);
+$('company').addEventListener('input', renderSlide);
+$('footer').addEventListener('input', () => {
+  try { localStorage.setItem('disc-map-builder:footer', $('footer').value); } catch { /* storage unavailable */ }
+  renderSlide();
+});
+
+let toastTimer;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 4200); }
+
+/* ---------- Download ---------- */
+
+let downloadsP;
+function getDownloads() {
+  if (!downloadsP) downloadsP = window.claude && typeof window.claude.use === 'function' ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null);
+  return downloadsP;
+}
+async function offer(filename, data) {
+  const dl = await getDownloads();
+  if (dl) {
+    try { await dl.save({ filename, data }); toast(`Saved ${filename}.`); }
+    catch (e) { if (e && e.code === 'declined') return; toast(e && e.code === 'rate_limited' ? 'A save is already waiting for your answer.' : `Couldn't save ${filename} here.`); }
+    return;
+  }
+  const url = URL.createObjectURL(new Blob([data]));
+  const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+const safeName = s => s.replace(/[\\/:*?"<>|]/g, '').trim();
+const reportFileName = (p, part) => `${safeName(p.fullName)} - ${part === 'disc' ? 'DISC' : 'Motivators'}.pdf`;
+
+// Copies one person's pages into their own PDF. `loaded` reuses a source PDF already opened during a batch.
+async function reportPdf(part, loaded) {
+  if (!loaded.has(part.bytes)) loaded.set(part.bytes, await PDFLib.PDFDocument.load(part.bytes, { ignoreEncryption: true }));
+  const out = await PDFLib.PDFDocument.create();
+  const pages = await out.copyPages(loaded.get(part.bytes), part.pages);
+  pages.forEach(pg => out.addPage(pg));
+  return out.save();
+}
+
+$('saveAll').addEventListener('click', async e => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  toast('Building the reports…');
+  try {
+    const zip = new JSZip(), loaded = new Map();
+    for (const p of state.people) for (const part of ['disc', 'mot']) {
+      if (p[part]) zip.file(reportFileName(p, part), await reportPdf(p[part], loaded), { createFolders: false });
+    }
+    const bytes = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
+    await offer(`${safeName(company())} Individual Reports.zip`, bytes);
+  } catch (err) { console.error(err); toast(`Couldn't build the reports. ${err.message || ''}`); }
+  finally { btn.disabled = false; }
+});
+
+async function busyButton(btn, what, fn) {
+  btn.disabled = true;
+  try { await fn(); } catch (err) { console.error(err); toast(`Something went wrong building the ${what}. ${err.message || ''}`); }
+  finally { btn.disabled = false; }
+}
+const deckBytes = async () => (await buildDiscMap(state.templateBytes, { company: company(), footer: $('footer').value.trim(), people: team() })).bytes;
+
+$('download').addEventListener('click', e => busyButton(e.currentTarget, 'PowerPoint', async () => {
+  await offer(`${safeName(company())} DISC Summary.pptx`, await deckBytes());
+}));
+$('downloadPdf').addEventListener('click', e => busyButton(e.currentTarget, 'PDF', async () => {
+  await offer(`${safeName(company())} DISC Summary.pdf`, await buildDiscPdf(await deckBytes(), `${company()} DISC Map`));
+}));
+
+/* ---------- Motivators Map ---------- */
+
+// The Motivators table follows state.motOrder (person ids, set with the arrows); anyone not in it keeps team-table order after.
+const motPeople = () => {
+  const people = state.people.filter(p => p.include && p.mot?.ranks);
+  const at = id => { const i = (state.motOrder || []).indexOf(id); return i < 0 ? Infinity : i; };
+  return people.map((p, i) => ({ p, i })).sort((a, b) => at(a.p.id) - at(b.p.id) || a.i - b.i)
+    .map(({ p }) => ({ id: p.id, name: p.display, ranks: p.mot.ranks }));
+};
+
+function moveMotivatorRow(id, dir) {
+  const ids = motPeople().map(p => p.id), i = ids.indexOf(id), j = dir === 'up' ? i - 1 : i + 1;
+  if (i < 0 || j < 0 || j >= ids.length) return;
+  [ids[i], ids[j]] = [ids[j], ids[i]];
+  state.motOrder = ids;
+  renderMotivators();
+  const again = document.querySelector(`[data-move="${dir}"][data-id="${id}"]:not(:disabled)`) || document.querySelector(`[data-move][data-id="${id}"]:not(:disabled)`);
+  again?.focus();
+}
+const motArgs = () => ({ company: company(), footer: $('footer').value.trim(), rows: motivatorRows(motPeople()) });
+
+function renderMotivators() {
+  const rows = motivatorRows(motPeople());
+  const withPages = state.people.filter(p => p.include && p.mot).length, unread = withPages - rows.length;
+  $('motPdf').disabled = $('motXlsx').disabled = !rows.length;
+  $('motNote').textContent = !rows.length
+    ? (state.people.some(p => p.mot) ? 'No one with a Motivators page is ticked to be on the map.' : "This team's PDF has no Motivators pages, so there is no Motivators Map to make.")
+    : `${rows.length} ${rows.length === 1 ? 'person' : 'people'}. Use the arrows to put them in the order you want; the PDF and Excel downloads use this order.` + (unread ? ` ${unread} Motivators ${unread === 1 ? 'page' : 'pages'} couldn't be read and ${unread === 1 ? 'is' : 'are'} left out.` : '');
+  $('motReset').hidden = !(state.motOrder && state.motOrder.length);
+  if (!rows.length) { $('motPreview').hidden = true; return; }
+  $('motPreview').hidden = false;
+  const outline = level => MOT_LEVELS[level]?.color ? ` style="border-color:#${MOT_LEVELS[level].color}"` : '';
+  const cells = row => row.cells.map((m, i) => `${i === 3 ? '<td class="div"></td>' : ''}<td class="rank${i === 0 ? ' first' : ''}${i === 5 ? ' lastc' : ''}"><span${outline(m.level)}>${esc(m.label)}</span></td>`).join('');
+  $('motPreview').innerHTML = `<table><caption>${esc(company())} Motivators Map</caption>
+    <thead><tr><th class="move"><span class="sr">Order</span></th><th class="who"></th>${[1, 2, 3, 4, 5, 6].map(n => `${n === 4 ? '<th class="div"></th>' : ''}<th class="${n === 1 ? 'first' : ''}${n === 6 ? ' lastc' : ''}">${n}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map((r, i) => `<tr><td class="move">
+      <button type="button" data-move="up" data-id="${r.id}" ${i === 0 ? 'disabled' : ''} aria-label="Move ${esc(r.name)} up">&#9650;</button>
+      <button type="button" data-move="down" data-id="${r.id}" ${i === rows.length - 1 ? 'disabled' : ''} aria-label="Move ${esc(r.name)} down">&#9660;</button>
+    </td><th class="who" scope="row">${esc(r.name)}</th>${cells(r)}</tr>`).join('')}</tbody></table>
+    <div class="legend">${Object.entries(MOT_LEVELS).map(([l, v]) => `<span${outline(l)}>${l.charAt(0) + l.slice(1).toLowerCase()}</span>`).join('')}</div>`;
+}
+
+$('motPreview').addEventListener('click', e => {
+  const b = e.target.closest('[data-move]');
+  if (b && !b.disabled) moveMotivatorRow(+b.dataset.id, b.dataset.move);
+});
+$('motReset').addEventListener('click', () => { state.motOrder = []; renderMotivators(); });
+
+$('motPdf').addEventListener('click', e => busyButton(e.currentTarget, 'PDF', async () => {
+  await offer(`${safeName(company())} Motivators Summary.pdf`, await buildMotivatorsPdf(motArgs()));
+}));
+$('motXlsx').addEventListener('click', e => busyButton(e.currentTarget, 'Excel file', async () => {
+  await offer(`${safeName(company())} Motivators Summary.xlsx`, await buildMotivatorsXlsx(motArgs()));
+}));
+
+/* ---------- Start: example team (made-up people) ---------- */
+
+function exampleTeam() {
+  // Motivator order is rank 1 to 6; levels use V(ery high), H(igh), M(oderate), L(ow), X (very low).
+  const lv = { V: 'VERY HIGH', H: 'HIGH', M: 'MODERATE', L: 'LOW', X: 'VERY LOW' };
+  const mot = (order, levels) => ({ ranks: Object.fromEntries(order.split(' ').map((cat, i) => [cat, { rank: i + 1, level: lv[levels[i]] }])) });
+  return [
+    ['Avery Collins', 27, 4, 'POWER ECONOMIC CONCEPTUAL REGULATORY HUMANITARIAN AESTHETIC', 'HMMMLL'],
+    ['Casey Patel', 17, 33, 'HUMANITARIAN AESTHETIC REGULATORY POWER ECONOMIC CONCEPTUAL', 'MMMMLL'],
+    ['Drew Kim', 5, 18, 'ECONOMIC CONCEPTUAL HUMANITARIAN REGULATORY POWER AESTHETIC', 'HMMMLL'],
+    ['Jordan Reyes', 13, 28, 'CONCEPTUAL REGULATORY ECONOMIC POWER HUMANITARIAN AESTHETIC', 'MMMMML'],
+    ['Morgan Lee', 37, 21, 'REGULATORY POWER ECONOMIC CONCEPTUAL HUMANITARIAN AESTHETIC', 'HHMMMM'],
+    ['Riley Nguyen', 58, 47, 'CONCEPTUAL ECONOMIC POWER HUMANITARIAN REGULATORY AESTHETIC', 'VHHLLX'],
+    ['Sam Ortiz', null, 35, 'ECONOMIC POWER AESTHETIC REGULATORY CONCEPTUAL HUMANITARIAN', 'HMHMLL'],
+    ['Taylor Brooks', 58, 9, 'AESTHETIC CONCEPTUAL REGULATORY ECONOMIC HUMANITARIAN POWER', 'HMMMMM'],
+  ].map(([fullName, natural, adapted, order, levels]) => ({ id: state.nextId++, example: true, include: true, fullName, first: fullName.split(' ')[0], natural, adapted, disc: null, mot: mot(order, levels) }));
+}
+
+(async function start() {
+  let saved = null;
+  try { saved = localStorage.getItem('disc-map-builder:footer'); } catch { /* storage unavailable */ }
+  $('footer').value = saved || DEFAULT_FOOTER;
+  $('company').value = EXAMPLE_COMPANY;
+  state.people = exampleTeam();
+  renderTeam();
+  try { await loadTemplate(); renderTeam(); }
+  catch (e) { console.error(e); toast("The DISC Map template couldn't be loaded, so downloads are off. Reload the page to try again."); }
+})();
+</script>
+</body>
+</html>
